@@ -1,0 +1,17 @@
+# Go
+backend/bin/
+backend/coverage.out
+backend/coverage.html
+*.test
+*.out
+
+# Node / React
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+*.log
+
+# Env files (never commit secrets)
+.env
+.env.*
+!.env.example
