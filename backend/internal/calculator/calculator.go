@@ -1,3 +1,4 @@
+// Package calculator implements the basic logic of arithmetic operations
 package calculator
 
 import (
@@ -6,10 +7,10 @@ import (
 )
 
 var (
-	ErrDivisionByZero  = errors.New("no se puede dividir por cero")
-	ErrNegativeSqrt    = errors.New("no se puede sacar la raíz de un número negativo")
-	ErrUnkownOperation = errors.New("operación desconocida")
-	ErrInvalidResult   = errors.New("el resultado es infinito")
+	ErrDivisionByZero  = errors.New("cannot divide by zero")
+	ErrNegativeSqrt    = errors.New("cannot take the square root of a negative number")
+	ErrUnkownOperation = errors.New("unknown operation")
+	ErrInvalidResult   = errors.New("result is not defined")
 )
 
 func Calculate(op string, a, b float64) (float64, error) {
