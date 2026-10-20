@@ -314,6 +314,10 @@ describe('results', () => {
     })
   })
 
+  it('formats the result for the display', () => {
+    expect(run([...keys('.1+.2='), resolved(0.30000000000000004)]).display).toBe('0.3')
+  })
+
   it('ignores a result when no request is pending', () => {
     expect(calculatorReducer(initialState, resolved(8))).toBe(initialState)
   })

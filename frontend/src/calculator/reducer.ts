@@ -1,3 +1,4 @@
+import { formatNumber } from './format'
 import type { Action, BinaryOperation, CalculatorState, Continuation, Digit } from './types'
 
 export const MAX_DIGITS = 12
@@ -123,7 +124,7 @@ function inputSqrt(state: CalculatorState): CalculatorState {
 
 function applyResult(state: CalculatorState, result: number): CalculatorState {
   if (state.request === null) return state
-  const display = String(result) // Step 4 replaces this with formatNumber
+  const display = formatNumber(result)
   const then = state.request.then
   switch (then.type) {
     case 'chain':
