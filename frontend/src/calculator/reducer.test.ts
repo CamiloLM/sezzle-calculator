@@ -21,6 +21,7 @@ function keys(input: string): Action[] {
     if (char === '.') return { type: 'decimal' }
     if (char === '=') return { type: 'equals' }
     if (char === 'r') return { type: 'sqrt' }
+    if (char === '%') return { type: 'percent' }
     const operation = OPERATORS[char]
     if (operation) return { type: 'operator', operation }
     throw new Error(`keys(): unsupported character "${char}"`)
@@ -160,6 +161,7 @@ describe('while a request is pending', () => {
     ['an operator', { type: 'operator', operation: 'add' }],
     ['equals', { type: 'equals' }],
     ['square root', { type: 'sqrt' }],
+    ['percent', { type: 'percent' }],
     ['delete', DEL],
     ['all clear', AC],
   ])('ignores %s', (_name, action) => {
@@ -252,9 +254,128 @@ describe('equals', () => {
     })
   })
 
-  it.each([[''], ['5'], ['5+']])('does nothing after "%s"', (typed) => {
+  it.each([[''], ['5']])('does nothing after "%s"', (typed) => {
     const state = run(keys(typed))
     expect(calculatorReducer(state, { type: 'equals' })).toBe(state)
+  })
+
+  it('remembers the operator and second number for a repeated equals', () => {
+    expect(run(keys('5*2='))).toMatchObject({ lastOp: 'multiply', lastOperand: 2 })
+  })
+})
+
+describe('equals with no second number', () => {
+  it('uses the display for both sides', () => {
+    expect(run(keys('5*=')).request).toEqual({
+      operation: 'multiply',
+      a: 5,
+      b: 5,
+      then: { type: 'equals' },
+    })
+  })
+
+  it('uses a chained result for both sides', () => {
+    const state = run([...keys('2+3*'), resolved(5), ...keys('=')])
+    expect(state.request).toMatchObject({ operation: 'multiply', a: 5, b: 5 })
+  })
+
+  it('remembers the display as the operand for a repeated equals', () => {
+    expect(run(keys('5*='))).toMatchObject({ lastOp: 'multiply', lastOperand: 5 })
+  })
+})
+
+describe('repeated equals', () => {
+  it('applies the last operation again to the result: 5 × 2 = = gives 20', () => {
+    let state = run([...keys('5*2='), resolved(10), ...keys('=')])
+    expect(state.request).toEqual({ operation: 'multiply', a: 10, b: 2, then: { type: 'equals' } })
+    state = calculatorReducer(state, resolved(20))
+    expect(state).toMatchObject({ display: '20', input: 'value', lastOp: 'multiply', lastOperand: 2 })
+  })
+
+  it('keeps the order of the operands: 8 − 3 = = gives 5 − 3', () => {
+    expect(run([...keys('8-3='), resolved(5), ...keys('=')]).request).toMatchObject({
+      operation: 'subtract',
+      a: 5,
+      b: 3,
+    })
+  })
+
+  it('repeats an equals that had no second number: 5 × = = gives 25 × 5', () => {
+    expect(run([...keys('5*='), resolved(25), ...keys('=')]).request).toMatchObject({
+      operation: 'multiply',
+      a: 25,
+      b: 5,
+    })
+  })
+
+  it('does nothing once a new number is typed', () => {
+    const state = run(keys('7'), afterResult)
+    expect(calculatorReducer(state, { type: 'equals' })).toBe(state)
+  })
+
+  it('does nothing after all clear', () => {
+    expect(run([...keys('5*2='), resolved(10), AC, ...keys('=')])).toBe(initialState)
+  })
+})
+
+describe('percent', () => {
+  it('is ignored when there is no number yet', () => {
+    expect(run(keys('%'))).toBe(initialState)
+  })
+
+  it('is ignored right after an operator', () => {
+    expect(calculatorReducer(afterOperator, { type: 'percent' })).toBe(afterOperator)
+  })
+
+  it('is ignored on a lone minus sign', () => {
+    expect(run(keys('%'), negativeStart)).toBe(negativeStart)
+  })
+
+  it('divides the display by 100 with no operator pending: 50 % gives 0.5', () => {
+    expect(run(keys('50%')).request).toEqual({
+      operation: 'percentage',
+      a: 50,
+      b: 1,
+      then: { type: 'operand' },
+    })
+    expect(run([...keys('50%'), resolved(0.5)])).toMatchObject({ display: '0.5', input: 'value' })
+  })
+
+  it('divides a result by 100', () => {
+    expect(run(keys('%'), afterResult).request).toMatchObject({ operation: 'percentage', a: 8, b: 1 })
+  })
+
+  it.each([['+', 'add'], ['-', 'subtract']])('after %s takes a percent of the left operand', (op) => {
+    expect(run(keys(`200${op}10%`)).request).toEqual({
+      operation: 'percentage',
+      a: 200,
+      b: 10,
+      then: { type: 'operand' },
+    })
+  })
+
+  it('200 + 10 % = adds 20 to 200', () => {
+    const state = run([...keys('200+10%'), resolved(20)])
+    expect(state).toMatchObject({ display: '20', left: 200, pendingOp: 'add' })
+    expect(calculatorReducer(state, { type: 'equals' }).request).toMatchObject({
+      operation: 'add',
+      a: 200,
+      b: 20,
+    })
+  })
+
+  it.each([['*'], ['/'], ['^']])('after %s divides the second number by 100', (op) => {
+    expect(run(keys(`200${op}10%`)).request).toEqual({
+      operation: 'percentage',
+      a: 10,
+      b: 1,
+      then: { type: 'operand' },
+    })
+  })
+
+  it('200 × 10 % = multiplies 200 by 0.1', () => {
+    const state = run([...keys('200*10%'), resolved(0.1), ...keys('=')])
+    expect(state.request).toMatchObject({ operation: 'multiply', a: 200, b: 0.1 })
   })
 })
 
@@ -293,6 +414,8 @@ describe('results', () => {
       ...initialState,
       display: '8',
       input: 'value',
+      lastOp: 'add',
+      lastOperand: 3,
     })
   })
 

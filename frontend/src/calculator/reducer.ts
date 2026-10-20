@@ -1,5 +1,5 @@
 import { formatNumber } from './format'
-import type { Action, BinaryOperation, CalculatorState, Continuation, Digit } from './types'
+import type { Action, BinaryOperation, CalculatorState, Digit } from './types'
 
 export const MAX_DIGITS = 12
 
@@ -29,7 +29,7 @@ export function calculatorReducer(state: CalculatorState, action: Action): Calcu
     case 'sqrt':
       return inputSqrt(state)
     case 'percent':
-      return state // Phase 2 (rule 18)
+      return inputPercent(state)
     case 'delete':
       return deleteLast(state)
     case 'clear':
@@ -88,12 +88,17 @@ function isLoneMinus(state: CalculatorState): boolean {
   return state.display === '-'
 }
 
-/** Asks the backend for `left pendingOp display`. Does nothing without a pending operator. */
-function requestPendingOp(state: CalculatorState, then: Continuation): CalculatorState {
+/** Asks the backend for `left pendingOp display`, then chains `nextOp`. */
+function requestChain(state: CalculatorState, nextOp: BinaryOperation): CalculatorState {
   if (state.pendingOp === null || state.left === null) return state
   return {
     ...state,
-    request: { operation: state.pendingOp, a: state.left, b: Number(state.display), then },
+    request: {
+      operation: state.pendingOp,
+      a: state.left,
+      b: Number(state.display),
+      then: { type: 'chain', nextOp },
+    },
   }
 }
 
@@ -106,12 +111,52 @@ function inputOperator(state: CalculatorState, operation: BinaryOperation): Calc
   if (state.pendingOp === null) {
     return { ...state, left: Number(state.display), pendingOp: operation, input: 'empty' }
   }
-  return requestPendingOp(state, { type: 'chain', nextOp: operation })
+  return requestChain(state, operation)
 }
 
 function inputEquals(state: CalculatorState): CalculatorState {
+  if (isLoneMinus(state)) return state
+  if (state.pendingOp !== null && state.left !== null) {
+    return requestEquals(state, state.pendingOp, state.left)
+  }
+  if (state.input === 'value' && state.lastOp !== null && state.lastOperand !== null) {
+    return repeatEquals(state, state.lastOp, state.lastOperand)
+  }
+  return state
+}
+
+/**
+ * `left operation display`, remembered for a repeated equals. Right after an operator
+ * the display still shows the left number, so `5 × =` is 5 × 5.
+ */
+function requestEquals(state: CalculatorState, operation: BinaryOperation, left: number): CalculatorState {
+  const b = Number(state.display)
+  return {
+    ...state,
+    lastOp: operation,
+    lastOperand: b,
+    request: { operation, a: left, b, then: { type: 'equals' } },
+  }
+}
+
+/** `display lastOp lastOperand`: 5 × 2 = = is 10 × 2. */
+function repeatEquals(state: CalculatorState, operation: BinaryOperation, b: number): CalculatorState {
+  return {
+    ...state,
+    request: { operation, a: Number(state.display), b, then: { type: 'equals' } },
+  }
+}
+
+/** After + or − it is a percent of the left operand (200 + 10 % is 200 + 20), otherwise display / 100. */
+function inputPercent(state: CalculatorState): CalculatorState {
   if (isLoneMinus(state) || state.input === 'empty') return state
-  return requestPendingOp(state, { type: 'equals' })
+  const value = Number(state.display)
+  const ofLeft = state.pendingOp === 'add' || state.pendingOp === 'subtract'
+  const [a, b] = ofLeft && state.left !== null ? [state.left, value] : [value, 1]
+  return {
+    ...state,
+    request: { operation: 'percentage', a, b, then: { type: 'operand' } },
+  }
 }
 
 function inputSqrt(state: CalculatorState): CalculatorState {
