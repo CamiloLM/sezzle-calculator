@@ -170,3 +170,10 @@ curl -X POST http://localhost:8080/api/v1/calculate \
 5. (2026-10-19 17:08) What is the operator := ?
 6. (2026-10-19 17:27) For go version 1.27.2 create a Dockerfile and update docker-compose.yml
 7. (2026-10-19 19:18) I have these ideas for the calculator usage. Summarize and update the README where necessary
+8. (2026-10-19 18:49) This is my logic for the calcultator. Click and type are treated the same, suppose I write both. I click a number, it gets render (suppose 5) in the screen of the calculator
+  I click and operation (suppose *) , it gets highlighted.
+  If I click another operation it changes to that (suppose +)
+  If i type another number (suppose 2) the operation is made and it renders on screen the result (assuming * is highlighted 10 is rendered)
+  If I click equal it uses the same number as the other name (assuming * is highlighted 25 is rendered). Am I missing anything?
+9. (2026-10-19 19:15) Give me a summary of the calculator operations and logic
+10. (2026-10-19 19:19) Update the README.md file where necessary

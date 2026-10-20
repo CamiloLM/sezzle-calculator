@@ -14,4 +14,6 @@ frontend/coverage/
 # Env files (never commit secrets)
 .env
 .env.*
+CLAUDE.md
+.claude/
 !.env.example

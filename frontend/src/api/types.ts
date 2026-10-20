@@ -3,7 +3,7 @@
 // Operations names as the backend accepts them
 export type Operation =
   | 'add'
-  | 'substract'
+  | 'subtract'
   | 'multiply'
   | 'divide'
   | 'power'
@@ -18,7 +18,7 @@ export interface CalculateRequest {
 }
 
 // Success response body
-export interface CalculateSucces {
+export interface CalculateSuccess {
   result: number
 }
 
