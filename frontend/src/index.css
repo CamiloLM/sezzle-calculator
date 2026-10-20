@@ -1,1 +1,10 @@
 @import "tailwindcss";
+
+/* Sezzle brand colors */
+@theme {
+  --color-mint: #9ff4d9;
+  --color-peach: #fcd7b6;
+  --color-pink: #f9b5b2;
+  --color-lilac: #d39bd3;
+  --color-plum: #382757;
+}
